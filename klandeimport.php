@@ -59,6 +59,11 @@ function add_extra_activity_links( $user )
                 <th><label for="stackoverflow_profile">Stackoverflow link</label></th>
                 <td><input type="text" name="stackoverflow_profile" value="<?php echo esc_attr(get_the_author_meta( 'stackoverflow_profile', $user->ID )); ?>" class="regular-text" /></td>
             </tr>
+
+            <tr>
+                <th><label for="superuser_profile">SuperUser link</label></th>
+                <td><input type="text" name="superuser_profile" value="<?php echo esc_attr(get_the_author_meta( 'superuser_profile', $user->ID )); ?>" class="regular-text" /></td>
+            </tr>
         </table>
     <?php
 }
@@ -75,6 +80,7 @@ function save_extra_activity_links( $user_id )
     update_user_meta( $user_id,'wordpress_org_profile', sanitize_text_field( $_POST['wordpress_org_profile'] ) );
     update_user_meta( $user_id,'bitbucket_profile', sanitize_text_field( $_POST['bitbucket_profile'] ) );
     update_user_meta( $user_id,'stackoverflow_profile', sanitize_text_field( $_POST['stackoverflow_profile'] ) );
+    update_user_meta( $user_id,'superuser_profile', sanitize_text_field( $_POST['superuser_profile'] ) );
 }
 add_action( 'personal_options_update', 'save_extra_activity_links' );
 add_action( 'edit_user_profile_update', 'save_extra_activity_links' );
@@ -89,6 +95,7 @@ function import_users_activity(){
 		import_user_github_activity( $user );
 		import_user_wordpress_activity( $user );
 		import_user_stackoverflow_activity( $user );
+		import_user_superuser_activity( $user );
 	}
 }
 
@@ -129,7 +136,27 @@ function import_user_stackoverflow_activity( $user ){
     if (!($x = simplexml_load_file( $stackoverflow )))
         return;
  
-    foreach ($x->entry as $activity) {
+    save_stackexchange_sites_activities( $x );
+}
+
+/**
+ * This function imports activity from a SuperUser RSS.
+ * @param  object $user
+ */
+function import_user_superuser_activity( $user ){
+	$superuser = get_user_meta( $user->ID , 'superuser_profile', TRUE );
+    if (!($x = simplexml_load_file( $superuser )))
+        return;
+
+    save_stackexchange_sites_activities( $x );
+}
+
+/**
+ * This function imports activity from a Stackowerflow like xml document.
+ * @param  object $xml
+ */
+function save_stackexchange_sites_activities( $xml ) {
+	foreach ($xml->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
 	    	$link = (string)$activity->link[href];
