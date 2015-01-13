@@ -25,6 +25,7 @@ function create_posttype() {
 		  'public' => true,
 		  'has_archive' => false,
 		  'rewrite' => array('slug' => 'activities'),
+		  'taxonomies' => array( 'category' ),
 		)
 	);
 }
@@ -105,6 +106,8 @@ function import_users_activity(){
  */
 function import_user_github_activity( $user ){
 	$github = get_user_meta( $user->ID , 'github_profile', TRUE );
+	$github_category = get_cat_ID( 'Github' );
+
     if (!($x = simplexml_load_file( $github )))
         return;
  
@@ -122,7 +125,7 @@ function import_user_github_activity( $user ){
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date );
+			save_activity( $key, $content, $date, $github_category );
 		}
     }
 }
@@ -133,10 +136,11 @@ function import_user_github_activity( $user ){
  */
 function import_user_stackoverflow_activity( $user ){
 	$stackoverflow = get_user_meta( $user->ID , 'stackoverflow_profile', TRUE );
+	$stackowerflow_category = get_cat_ID( 'Stackoverflow' );
     if (!($x = simplexml_load_file( $stackoverflow )))
         return;
  
-    save_stackexchange_sites_activities( $x );
+    save_stackexchange_sites_activities( $x, $stackowerflow_category );
 }
 
 /**
@@ -145,17 +149,18 @@ function import_user_stackoverflow_activity( $user ){
  */
 function import_user_superuser_activity( $user ){
 	$superuser = get_user_meta( $user->ID , 'superuser_profile', TRUE );
+	$superuser_category = get_cat_ID( 'SuperUser' );
     if (!($x = simplexml_load_file( $superuser )))
         return;
 
-    save_stackexchange_sites_activities( $x );
+    save_stackexchange_sites_activities( $x, $superuser_category );
 }
 
 /**
  * This function imports activity from a Stackowerflow like xml document.
  * @param  object $xml
  */
-function save_stackexchange_sites_activities( $xml ) {
+function save_stackexchange_sites_activities( $xml, $category_id ) {
 	foreach ($xml->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
@@ -169,7 +174,7 @@ function save_stackexchange_sites_activities( $xml ) {
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date );
+			save_activity( $key, $content, $date, $category_id );
 		}
     }
 }
@@ -180,13 +185,14 @@ function save_stackexchange_sites_activities( $xml ) {
  */
 function import_user_wordpress_activity( $user ){
 	$wordpress = get_user_meta( $user->ID , 'wordpress_org_profile', TRUE );
+	$wordpress_category = get_cat_ID( 'Wordpress' );
 	if( $wordpress != '' ){
 		$html = file_get_html( $wordpress );
 		foreach( $html->find('ul[id=activity-list] li') as $activity){
 			$content = $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
-			save_activity( $key, $content, $date );
+			save_activity( $key, $content, $date, $wordpress_category );
 		}
 	}
 }
@@ -198,7 +204,7 @@ function import_user_wordpress_activity( $user ){
  * @param  string $date
  * @param  string $date_key
  */
-function save_activity( $key, $content, $date ){
+function save_activity( $key, $content, $date, $category_id ){
 	$post_id = get_post_by_title( $key );
 	if( $post_id != null ) {
 		$repeat = get_post_meta( $post_id, 'activity_repeat', TRUE );
@@ -212,8 +218,10 @@ function save_activity( $key, $content, $date ){
 			'post_status'   => 'publish',
 			'post_author'   => 1,
 		);
+
 		$repeat = 1;
 		$post_id = wp_insert_post( $new_activity );
+		wp_set_object_terms( $post_id, $category_id, 'category' );
 		update_post_meta( $post_id, 'activity_repeat', $repeat );
 	}
 }
