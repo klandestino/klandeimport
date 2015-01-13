@@ -121,7 +121,7 @@ function import_user_github_activity( $user ){
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
 	    		$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
-	    		$wordarray[0] = '<strong>' . $wordarray[0] . '</strong>'; 
+	    		$wordarray[0] = get_avatar( $user->ID, 32 );
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
@@ -170,7 +170,7 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id ) {
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
-	    		$wordarray[0] = '<a href="' . $link . '" target="_blank">' . $wordarray[0] . '</a>';
+	    		$wordarray[0] = get_avatar( $user->ID, 32 ) . ' <a href="' . $link . '" target="_blank">' . $wordarray[0] . '</a>';
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
@@ -189,7 +189,7 @@ function import_user_wordpress_activity( $user ){
 	if( $wordpress != '' ){
 		$html = file_get_html( $wordpress );
 		foreach( $html->find('ul[id=activity-list] li') as $activity){
-			$content = $activity->first_child('p')->innertext;
+			$content = get_avatar( $user->ID, 32 ) . ' ' . $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
 			save_activity( $key, $content, $date, $wordpress_category, $user->ID );
