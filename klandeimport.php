@@ -125,7 +125,7 @@ function import_user_github_activity( $user ){
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date, $github_category );
+			save_activity( $key, $content, $date, $github_category, $user->ID );
 		}
     }
 }
@@ -140,7 +140,7 @@ function import_user_stackoverflow_activity( $user ){
     if (!($x = simplexml_load_file( $stackoverflow )))
         return;
  
-    save_stackexchange_sites_activities( $x, $stackowerflow_category );
+    save_stackexchange_sites_activities( $x, $stackowerflow_category, $user->ID );
 }
 
 /**
@@ -153,14 +153,14 @@ function import_user_superuser_activity( $user ){
     if (!($x = simplexml_load_file( $superuser )))
         return;
 
-    save_stackexchange_sites_activities( $x, $superuser_category );
+    save_stackexchange_sites_activities( $x, $superuser_category, $user->ID );
 }
 
 /**
  * This function imports activity from a Stackowerflow like xml document.
  * @param  object $xml
  */
-function save_stackexchange_sites_activities( $xml, $category_id ) {
+function save_stackexchange_sites_activities( $xml, $category_id, $user_id ) {
 	foreach ($xml->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
@@ -174,7 +174,7 @@ function save_stackexchange_sites_activities( $xml, $category_id ) {
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date, $category_id );
+			save_activity( $key, $content, $date, $category_id, $user_id );
 		}
     }
 }
@@ -192,7 +192,7 @@ function import_user_wordpress_activity( $user ){
 			$content = $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
-			save_activity( $key, $content, $date, $wordpress_category );
+			save_activity( $key, $content, $date, $wordpress_category, $user->ID );
 		}
 	}
 }
@@ -204,7 +204,7 @@ function import_user_wordpress_activity( $user ){
  * @param  string $date
  * @param  string $date_key
  */
-function save_activity( $key, $content, $date, $category_id ){
+function save_activity( $key, $content, $date, $category_id, $user_id ){
 	$post_id = get_post_by_title( $key );
 	if( $post_id != null ) {
 		$repeat = get_post_meta( $post_id, 'activity_repeat', TRUE );
@@ -216,7 +216,7 @@ function save_activity( $key, $content, $date, $category_id ){
 			'post_date'		=> $date,
 			'post_type' 	=> 'activity',
 			'post_status'   => 'publish',
-			'post_author'   => 1,
+			'post_author'   => $user_id,
 		);
 
 		$repeat = 1;
