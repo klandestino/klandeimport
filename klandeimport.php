@@ -110,22 +110,31 @@ function import_user_github_activity( $user ){
 
     if (!($x = simplexml_load_file( $github )))
         return;
- 
+
+    // Set initial time to enter saving loop first time
+    $date_key = date( 'Y-m-d', strtotime( '1900-01-01') ); 
+    
     foreach ($x->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
 	    	$link = (string)$activity->link[href];
 	    	$content = (string)$activity->title;
-	    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
-	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-	    	$wordarray = explode(' ', $content);
-	    	if (count($wordarray) > 1 ) {
-	    		$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
-	    		$wordarray[0] = get_avatar( $user->ID, 32 );
-				$content = implode(' ', $wordarray); 
-			}
-			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date, $github_category, $user->ID );
+
+	    	$current_check_date = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+
+	    	// Only show one activity per day
+	    	if ( $date_key !== $current_check_date ) {
+	    		$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
+		    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+		    	$wordarray = explode(' ', $content);
+		    	if (count($wordarray) > 1 ) {
+		    		$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
+		    		$wordarray[0] = get_avatar( $user->ID, 32 );
+					$content = implode(' ', $wordarray); 
+				}
+				$key = md5( $date_key.strip_tags($content) );
+				save_activity( $key, $content, $date, $github_category, $user->ID );
+	    	}
 		}
     }
 }
