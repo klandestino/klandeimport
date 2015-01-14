@@ -119,7 +119,6 @@ function import_user_github_activity( $user ){
     	if( get_post_by_title( $id ) == NULL ) {
 	    	$link = (string)$activity->link[href];
 	    	$content = (string)$activity->title;
-
 	    	$current_check_date = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 
 	    	// Only show one activity per day
@@ -128,9 +127,11 @@ function import_user_github_activity( $user ){
 		    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 		    	$wordarray = explode(' ', $content);
 		    	if (count($wordarray) > 1 ) {
-		    		$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
-		    		$wordarray[0] = get_avatar( $user->ID, 32 );
-					$content = implode(' ', $wordarray); 
+					$content = get_avatar( $user->ID, 32 );
+					$content .= '&nbsp';
+					$content .= '<span class="fa fa-github fa-lg"></span>';
+					$content .= '&nbsp';
+					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 				}
 				$key = md5( $date_key.strip_tags($content) );
 				save_activity( $key, $content, $date, $github_category, $user->ID );
@@ -149,7 +150,7 @@ function import_user_stackoverflow_activity( $user ){
     if (!($x = simplexml_load_file( $stackoverflow )))
         return;
  
-    save_stackexchange_sites_activities( $x, $stackowerflow_category, $user->ID );
+    save_stackexchange_sites_activities( $x, $stackowerflow_category, $user->ID, 'stackoverflow' );
 }
 
 /**
@@ -162,14 +163,14 @@ function import_user_superuser_activity( $user ){
     if (!($x = simplexml_load_file( $superuser )))
         return;
 
-    save_stackexchange_sites_activities( $x, $superuser_category, $user->ID );
+    save_stackexchange_sites_activities( $x, $superuser_category, $user->ID, 'superuser' );
 }
 
 /**
  * This function imports activity from a Stackowerflow like xml document.
  * @param  object $xml
  */
-function save_stackexchange_sites_activities( $xml, $category_id, $user_id ) {
+function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $site ) {
 	foreach ($xml->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
@@ -179,8 +180,15 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id ) {
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
-	    		$wordarray[0] = get_avatar( $user->ID, 32 ) . ' <a href="' . $link . '" target="_blank">' . $wordarray[0] . '</a>';
-				$content = implode(' ', $wordarray); 
+				$content = get_avatar( $user->ID, 32 );
+					$content .= '&nbsp';
+					if ( 'stackoverflow' === $site ) {
+						$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
+					} else {
+						$content .= '<span class="' . $site . '"></span>';
+					}
+					$content .= '&nbsp';
+					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 			}
 			$key = md5( $date_key.strip_tags($content) );
 			save_activity( $key, $content, $date, $category_id, $user_id );
@@ -198,7 +206,11 @@ function import_user_wordpress_activity( $user ){
 	if( $wordpress != '' ){
 		$html = file_get_html( $wordpress );
 		foreach( $html->find('ul[id=activity-list] li') as $activity){
-			$content = get_avatar( $user->ID, 32 ) . ' ' . $activity->first_child('p')->innertext;
+			$content = get_avatar( $user->ID, 32 );
+			$content .= '&nbsp;';
+			$content .= '<span class="fa fa-wordpress fa-lg"></span>';
+			$content .= '&nbsp;';
+			$content .= $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
 			save_activity( $key, $content, $date, $wordpress_category, $user->ID );
