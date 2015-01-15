@@ -181,7 +181,7 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $sit
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
-				$content = get_avatar( $user->ID, GRAVATAR_SIZE );
+				$content = get_avatar( $user_id, GRAVATAR_SIZE );
 					if ( 'stackoverflow' === $site ) {
 						$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
 					} else {
