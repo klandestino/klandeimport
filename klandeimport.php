@@ -128,9 +128,9 @@ function import_user_github_activity( $user ){
 		    	$wordarray = explode(' ', $content);
 		    	if (count($wordarray) > 1 ) {
 					$content = get_avatar( $user->ID, 32 );
-					$content .= '&nbsp';
+					$content .= '&nbsp;';
 					$content .= '<span class="fa fa-github fa-lg"></span>';
-					$content .= '&nbsp';
+					$content .= '&nbsp;';
 					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 				}
 				$key = md5( $date_key.strip_tags($content) );
@@ -181,13 +181,13 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $sit
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
 				$content = get_avatar( $user->ID, 32 );
-					$content .= '&nbsp';
+					$content .= '&nbsp;';
 					if ( 'stackoverflow' === $site ) {
 						$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
 					} else {
 						$content .= '<span class="' . $site . '"></span>';
 					}
-					$content .= '&nbsp';
+					$content .= '&nbsp;';
 					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 			}
 			$key = md5( $date_key.strip_tags($content) );
