@@ -13,6 +13,8 @@
 include_once('includes/simple_html_dom.php');
 
 define( 'GRAVATAR_SIZE', '20' );
+define( 'LINK_ATTRIBUTE_HREF', 'href' );
+
 /**
  * Function for registrating the activity post type
  */
@@ -118,7 +120,7 @@ function import_user_github_activity( $user ){
     foreach ($x->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
-	    	$link = (string)$activity->link[href];
+	    	$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
 	    	$content = (string)$activity->title;
 	    	$current_check_date = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 
@@ -173,7 +175,7 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $sit
 	foreach ($xml->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
-	    	$link = (string)$activity->link[href];
+	    	$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
 	    	$content = (string)$activity->title;
 	    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
