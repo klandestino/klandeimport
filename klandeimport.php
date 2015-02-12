@@ -25,6 +25,7 @@ function create_posttype() {
 		  'public' => true,
 		  'has_archive' => false,
 		  'rewrite' => array('slug' => 'activities'),
+		  'supports' => array( 'title', 'editor', 'author' )
 		)
 	);
 }
@@ -115,7 +116,7 @@ function import_user_github_activity( $user ){
 				$content = implode(' ', $wordarray); 
 			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date );
+			save_activity( $user, $key, $content, $date );
 		}
     }
 }
@@ -126,25 +127,27 @@ function import_user_github_activity( $user ){
  */
 function import_user_stackoverflow_activity( $user ){
 	$stackoverflow = get_user_meta( $user->ID , 'stackoverflow_profile', TRUE );
-    if (!($x = simplexml_load_file( $stackoverflow )))
-        return;
- 
-    foreach ($x->entry as $activity) {
-    	$id = (string)$activity->id;
-    	if( get_post_by_title( $id ) == NULL ) {
-	    	$link = (string)$activity->link[href];
-	    	$content = (string)$activity->title;
-	    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
-	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-	    	$wordarray = explode(' ', $content);
-	    	if (count($wordarray) > 1 ) {
-	    		$wordarray[0] = '<a href="' . $link . '" target="_blank">' . $wordarray[0] . '</a>';
-				$content = implode(' ', $wordarray); 
+	if( $stackoverflow != '' ){
+	    if (!($x = simplexml_load_file( $stackoverflow )))
+	        return;
+	 
+	    foreach ($x->entry as $activity) {
+	    	$id = (string)$activity->id;
+	    	if( get_post_by_title( $id ) == NULL ) {
+		    	$link = (string)$activity->link[href];
+		    	$content = (string)$activity->title;
+		    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
+		    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+		    	$wordarray = explode(' ', $content);
+		    	if (count($wordarray) > 1 ) {
+		    		$wordarray[0] = '<a href="' . $link . '" target="_blank">' . $wordarray[0] . '</a>';
+					$content = implode(' ', $wordarray); 
+				}
+				$key = md5( $date_key.strip_tags($content) );
+				save_activity( $user, $key, $content, $date );
 			}
-			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $key, $content, $date );
-		}
-    }
+	    }
+	}
 }
 
 /**
@@ -159,7 +162,7 @@ function import_user_wordpress_activity( $user ){
 			$content = $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
-			save_activity( $key, $content, $date );
+			save_activity( $user, $key, $content, $date );
 		}
 	}
 }
@@ -171,11 +174,11 @@ function import_user_wordpress_activity( $user ){
  * @param  string $date
  * @param  string $date_key
  */
-function save_activity( $key, $content, $date ){
+function save_activity( $user, $key, $content, $date ){
 	$post_id = get_post_by_title( $key );
 	if( $post_id != null ) {
 		$repeat = get_post_meta( $post_id, 'activity_repeat', TRUE );
-		update_post_meta( $post_id, 'activity_repeat', $repeat+1 );
+		//update_post_meta( $post_id, 'activity_repeat', $repeat+1 );
 	} else {
 		$new_activity = array(
 			'post_title'    => $key,
@@ -183,7 +186,7 @@ function save_activity( $key, $content, $date ){
 			'post_date'		=> $date,
 			'post_type' 	=> 'activity',
 			'post_status'   => 'publish',
-			'post_author'   => 1,
+			'post_author'   => $user->ID,
 		);
 		$repeat = 1;
 		$post_id = wp_insert_post( $new_activity );
