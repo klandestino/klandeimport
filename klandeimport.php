@@ -12,6 +12,8 @@
 
 include_once('includes/simple_html_dom.php');
 
+define( 'GRAVATAR_SIZE', '20' );
+
 /**
  * Function for registrating the activity post type
  */
@@ -111,9 +113,14 @@ function import_user_github_activity( $user ){
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
-	    		$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
+	    		
+	    		/*$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
 	    		$wordarray[0] = '<strong>' . $wordarray[0] . '</strong>'; 
-				$content = implode(' ', $wordarray); 
+				$content = implode(' ', $wordarray);*/
+
+				$content = get_avatar( $user->ID, GRAVATAR_SIZE );
+				$content .= '<span class="fa fa-github fa-lg"></span>';
+				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 			}
 			$key = md5( $date_key.strip_tags($content) );
 			save_activity( $user, $key, $content, $date );
