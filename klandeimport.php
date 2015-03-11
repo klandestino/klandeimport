@@ -109,7 +109,6 @@ function import_users_activity(){
  */
 function import_user_github_activity( $user ){
 	$github = get_user_meta( $user->ID , 'github_profile', TRUE );
-	$github_category = get_cat_ID( 'Github' );
 
     if (!($x = simplexml_load_file( $github )))
         return;
