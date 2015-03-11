@@ -13,6 +13,7 @@
 include_once('includes/simple_html_dom.php');
 
 define( 'GRAVATAR_SIZE', '20' );
+define( 'LINK_ATTRIBUTE_HREF', 'href' );
 
 /**
  * Function for registrating the activity post type
@@ -62,6 +63,11 @@ function add_extra_activity_links( $user )
                 <th><label for="stackoverflow_profile">Stackoverflow link</label></th>
                 <td><input type="text" name="stackoverflow_profile" value="<?php echo esc_attr(get_the_author_meta( 'stackoverflow_profile', $user->ID )); ?>" class="regular-text" /></td>
             </tr>
+
+            <tr>
+                <th><label for="superuser_profile">SuperUser link</label></th>
+                <td><input type="text" name="superuser_profile" value="<?php echo esc_attr(get_the_author_meta( 'superuser_profile', $user->ID )); ?>" class="regular-text" /></td>
+            </tr>
         </table>
     <?php
 }
@@ -78,6 +84,7 @@ function save_extra_activity_links( $user_id )
     update_user_meta( $user_id,'wordpress_org_profile', sanitize_text_field( $_POST['wordpress_org_profile'] ) );
     update_user_meta( $user_id,'bitbucket_profile', sanitize_text_field( $_POST['bitbucket_profile'] ) );
     update_user_meta( $user_id,'stackoverflow_profile', sanitize_text_field( $_POST['stackoverflow_profile'] ) );
+    update_user_meta( $user_id,'superuser_profile', sanitize_text_field( $_POST['superuser_profile'] ) );
 }
 add_action( 'personal_options_update', 'save_extra_activity_links' );
 add_action( 'edit_user_profile_update', 'save_extra_activity_links' );
@@ -92,6 +99,7 @@ function import_users_activity(){
 		import_user_github_activity( $user );
 		import_user_wordpress_activity( $user );
 		import_user_stackoverflow_activity( $user );
+		import_user_superuser_activity( $user );
 	}
 }
 
@@ -101,29 +109,35 @@ function import_users_activity(){
  */
 function import_user_github_activity( $user ){
 	$github = get_user_meta( $user->ID , 'github_profile', TRUE );
+	$github_category = get_cat_ID( 'Github' );
+
     if (!($x = simplexml_load_file( $github )))
         return;
- 
+
+    // Set initial time to enter saving loop first time
+    $date_key = date( 'Y-m-d', strtotime( '1900-01-01') ); 
+    
     foreach ($x->entry as $activity) {
     	$id = (string)$activity->id;
     	if( get_post_by_title( $id ) == NULL ) {
-	    	$link = (string)$activity->link[href];
+	    	$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
 	    	$content = (string)$activity->title;
-	    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
-	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-	    	$wordarray = explode(' ', $content);
-	    	if (count($wordarray) > 1 ) {
-	    		
-	    		/*$wordarray[count($wordarray)-1] = '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>'; 
-	    		$wordarray[0] = '<strong>' . $wordarray[0] . '</strong>'; 
-				$content = implode(' ', $wordarray);*/
 
-				$content = get_avatar( $user->ID, GRAVATAR_SIZE );
-				$content .= '<span class="fa fa-github fa-lg"></span>';
-				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
-			}
-			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $user, $key, $content, $date );
+	    	$current_check_date = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+
+	    	// Only show one activity per day
+	    	if ( $date_key !== $current_check_date ) {
+	    		$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
+		    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+		    	$wordarray = explode(' ', $content);
+		    	if (count($wordarray) > 1 ) {
+					$content = get_avatar( $user->ID, GRAVATAR_SIZE );
+					$content .= '<span class="fa fa-github fa-lg"></span>';
+					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
+				}
+				$key = md5( $date_key.strip_tags($content) );
+				save_activity( $user, $key, $content, $date );
+	    	}
 		}
     }
 }
@@ -134,27 +148,53 @@ function import_user_github_activity( $user ){
  */
 function import_user_stackoverflow_activity( $user ){
 	$stackoverflow = get_user_meta( $user->ID , 'stackoverflow_profile', TRUE );
-	if( $stackoverflow != '' ){
-	    if (!($x = simplexml_load_file( $stackoverflow )))
-	        return;
-	 
-	    foreach ($x->entry as $activity) {
-	    	$id = (string)$activity->id;
-	    	if( get_post_by_title( $id ) == NULL ) {
-		    	$link = (string)$activity->link[href];
-		    	$content = (string)$activity->title;
-		    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
-		    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-		    	$wordarray = explode(' ', $content);
-		    	if (count($wordarray) > 1 ) {
-		    		$wordarray[0] = '<a href="' . $link . '" target="_blank">' . $wordarray[0] . '</a>';
-					$content = implode(' ', $wordarray); 
-				}
-				$key = md5( $date_key.strip_tags($content) );
-				save_activity( $user, $key, $content, $date );
+
+	$stackowerflow_category = get_cat_ID( 'Stackoverflow' );
+    if (!($x = simplexml_load_file( $stackoverflow )))
+        return;
+ 
+    save_stackexchange_sites_activities( $x, $stackowerflow_category, $user->ID, 'stackoverflow' );
+}
+
+/**
+ * This function imports activity from a SuperUser RSS.
+ * @param  object $user
+ */
+function import_user_superuser_activity( $user ){
+	$superuser = get_user_meta( $user->ID , 'superuser_profile', TRUE );
+	$superuser_category = get_cat_ID( 'SuperUser' );
+    if (!($x = simplexml_load_file( $superuser )))
+        return;
+
+    save_stackexchange_sites_activities( $x, $superuser_category, $user->ID, 'superuser' );
+}
+
+/**
+ * This function imports activity from a Stackowerflow like xml document.
+ * @param  object $xml
+ */
+function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $site ) {
+	foreach ($xml->entry as $activity) {
+    	$id = (string)$activity->id;
+    	if( get_post_by_title( $id ) == NULL ) {
+	    	$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
+	    	$content = (string)$activity->title;
+	    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
+	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+	    	$wordarray = explode(' ', $content);
+	    	if (count($wordarray) > 1 ) {
+				$content = get_avatar( $user_id, GRAVATAR_SIZE );
+					if ( 'stackoverflow' === $site ) {
+						$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
+					} else {
+						$content .= '<span class="' . $site . '"></span>';
+					}
+					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 			}
-	    }
-	}
+			$key = md5( $date_key.strip_tags($content) );
+			save_activity( $user, $key, $content, $date );
+		}
+    }
 }
 
 /**
@@ -163,12 +203,16 @@ function import_user_stackoverflow_activity( $user ){
  */
 function import_user_wordpress_activity( $user ){
 	$wordpress = get_user_meta( $user->ID , 'wordpress_org_profile', TRUE );
+	$wordpress_category = get_cat_ID( 'Wordpress' );
 	if( $wordpress != '' ){
 		$html = file_get_html( $wordpress );
 		foreach( $html->find('ul[id=activity-list] li') as $activity){
-			$content = $activity->first_child('p')->innertext;
+			$content = get_avatar( $user->ID, GRAVATAR_SIZE );
+			$content .= '<span class="fa fa-wordpress fa-lg"></span>';
+			$content .= $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
+
 			save_activity( $user, $key, $content, $date );
 		}
 	}
@@ -195,8 +239,10 @@ function save_activity( $user, $key, $content, $date ){
 			'post_status'   => 'publish',
 			'post_author'   => $user->ID,
 		);
+
 		$repeat = 1;
 		$post_id = wp_insert_post( $new_activity );
+		wp_set_object_terms( $post_id, $category_id, 'category' );
 		update_post_meta( $post_id, 'activity_repeat', $repeat );
 	}
 }
