@@ -27,7 +27,8 @@ function create_posttype() {
 		  'public' => true,
 		  'has_archive' => false,
 		  'rewrite' => array('slug' => 'activities'),
-		  'supports' => array( 'title', 'editor', 'author' )
+		  'supports' => array( 'title', 'editor', 'author' ),
+		  'taxonomies' => array('category')
 		)
 	);
 }
@@ -77,13 +78,12 @@ add_action( 'edit_user_profile', 'add_extra_activity_links' );
  * Function for saving the content of the Activity Links from the user edit page.
  * @param  object $user_id
  */
-function save_extra_activity_links( $user_id )
-{
-    update_user_meta( $user_id,'github_profile', sanitize_text_field( $_POST['github_profile'] ) );
-    update_user_meta( $user_id,'wordpress_org_profile', sanitize_text_field( $_POST['wordpress_org_profile'] ) );
-    update_user_meta( $user_id,'bitbucket_profile', sanitize_text_field( $_POST['bitbucket_profile'] ) );
-    update_user_meta( $user_id,'stackoverflow_profile', sanitize_text_field( $_POST['stackoverflow_profile'] ) );
-    update_user_meta( $user_id,'superuser_profile', sanitize_text_field( $_POST['superuser_profile'] ) );
+function save_extra_activity_links( $user_id ){
+    update_user_meta( $user_id, 'github_profile', sanitize_text_field( $_POST['github_profile'] ) );
+    update_user_meta( $user_id, 'wordpress_org_profile', sanitize_text_field( $_POST['wordpress_org_profile'] ) );
+    update_user_meta( $user_id, 'bitbucket_profile', sanitize_text_field( $_POST['bitbucket_profile'] ) );
+    update_user_meta( $user_id, 'stackoverflow_profile', sanitize_text_field( $_POST['stackoverflow_profile'] ) );
+    update_user_meta( $user_id, 'superuser_profile', sanitize_text_field( $_POST['superuser_profile'] ) );
 }
 add_action( 'personal_options_update', 'save_extra_activity_links' );
 add_action( 'edit_user_profile_update', 'save_extra_activity_links' );
@@ -91,6 +91,7 @@ add_action( 'edit_user_profile_update', 'save_extra_activity_links' );
 /**
  * This function gets a list of all users and then fetches activity from different sources.
  */
+//add_action('init', 'import_users_activity');
 function import_users_activity(){
 	$users = get_users();
 
@@ -120,16 +121,10 @@ function import_user_github_activity( $user ){
 		if( get_post_by_title( $id ) == NULL ) {
 			$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
 			$content = (string)$activity->title;
-
 			$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
 			$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-			$wordarray = explode(' ', $content);
-			if (count($wordarray) > 1 ) {
-				$content .= '<span class="fa fa-github fa-lg"></span>';
-				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
-			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $user, $key, $content, $date );
+			save_activity( $user, $key, $content, $date, 'github', $link );
 		}
     }
 }
@@ -174,16 +169,8 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $sit
 	    	$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 	    	$wordarray = explode(' ', $content);
-	    	if (count($wordarray) > 1 ) {
-				if ( 'stackoverflow' === $site ) {
-					$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
-				} else {
-					$content .= '<span class="' . $site . '"></span>';
-				}
-				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
-			}
 			$key = md5( $date_key.strip_tags($content) );
-			save_activity( $user, $key, $content, $date );
+			save_activity( $user_id, $key, $content, $date, $site, $link );
 		}
     }
 }
@@ -198,12 +185,11 @@ function import_user_wordpress_activity( $user ){
 	if( $wordpress != '' ){
 		$html = file_get_html( $wordpress );
 		foreach( $html->find('ul[id=activity-list] li') as $activity){
-			$content .= '<span class="fa fa-wordpress fa-lg"></span>';
 			$content .= $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
 			$key = md5( strip_tags($content) );
 
-			save_activity( $user, $key, $content, $date );
+			save_activity( $user, $key, $content, $date, 'wordpress', '' );
 		}
 	}
 }
@@ -215,7 +201,15 @@ function import_user_wordpress_activity( $user ){
  * @param  string $date
  * @param  string $date_key
  */
-function save_activity( $user, $key, $content, $date ){
+function save_activity( $user, $key, $content, $date, $category, $link ){
+	$category_id = get_cat_ID( $category );
+
+	//If it doesn't exist create new category
+	if($category_id == 0) {
+		$term = wp_insert_term($category, 'category');
+	    $category_id = $term['term_id'];
+	}
+
 	$post_id = get_post_by_title( $key );
 	if( $post_id != null ) {
 		$repeat = get_post_meta( $post_id, 'activity_repeat', TRUE );
@@ -228,12 +222,14 @@ function save_activity( $user, $key, $content, $date ){
 			'post_type' 	=> 'activity',
 			'post_status'   => 'publish',
 			'post_author'   => $user->ID,
+			'post_category'	=> array( $category_id )
 		);
 
 		$repeat = 1;
 		$post_id = wp_insert_post( $new_activity );
-		wp_set_object_terms( $post_id, $category_id, 'category' );
+		wp_set_post_terms( $post_id, $category_id, 'category', false );
 		update_post_meta( $post_id, 'activity_repeat', $repeat );
+		update_post_meta( $post_id, 'activity_link', $link );
 	}
 }
 
