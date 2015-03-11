@@ -117,26 +117,21 @@ function import_user_github_activity( $user ){
     $date_key = date( 'Y-m-d', strtotime( '1900-01-01') ); 
     
     foreach ($x->entry as $activity) {
-    	$id = (string)$activity->id;
-    	if( get_post_by_title( $id ) == NULL ) {
-	    	$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
-	    	$content = (string)$activity->title;
+		$id = (string)$activity->id;
+		if( get_post_by_title( $id ) == NULL ) {
+			$link = (string)$activity->link[ LINK_ATTRIBUTE_HREF ];
+			$content = (string)$activity->title;
 
-	    	$current_check_date = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-
-	    	// Only show one activity per day
-	    	if ( $date_key !== $current_check_date ) {
-	    		$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
-		    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
-		    	$wordarray = explode(' ', $content);
-		    	if (count($wordarray) > 1 ) {
-					$content = get_avatar( $user->ID, GRAVATAR_SIZE );
-					$content .= '<span class="fa fa-github fa-lg"></span>';
-					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
-				}
-				$key = md5( $date_key.strip_tags($content) );
-				save_activity( $user, $key, $content, $date );
-	    	}
+			$date = date( 'Y-m-d H:i:s', strtotime( (string)$activity->published ) );
+			$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
+			$wordarray = explode(' ', $content);
+			if (count($wordarray) > 1 ) {
+				$content = get_avatar( $user->ID, GRAVATAR_SIZE );
+				$content .= '<span class="fa fa-github fa-lg"></span>';
+				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
+			}
+			$key = md5( $date_key.strip_tags($content) );
+			save_activity( $user, $key, $content, $date );
 		}
     }
 }
