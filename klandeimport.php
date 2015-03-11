@@ -12,7 +12,6 @@
 
 include_once('includes/simple_html_dom.php');
 
-define( 'GRAVATAR_SIZE', '20' );
 define( 'LINK_ATTRIBUTE_HREF', 'href' );
 
 /**
@@ -126,7 +125,6 @@ function import_user_github_activity( $user ){
 			$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 			$wordarray = explode(' ', $content);
 			if (count($wordarray) > 1 ) {
-				$content = get_avatar( $user->ID, GRAVATAR_SIZE );
 				$content .= '<span class="fa fa-github fa-lg"></span>';
 				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 			}
@@ -177,13 +175,12 @@ function save_stackexchange_sites_activities( $xml, $category_id, $user_id, $sit
 	    	$date_key = date( 'Y-m-d', strtotime( (string)$activity->published ) );
 	    	$wordarray = explode(' ', $content);
 	    	if (count($wordarray) > 1 ) {
-				$content = get_avatar( $user_id, GRAVATAR_SIZE );
-					if ( 'stackoverflow' === $site ) {
-						$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
-					} else {
-						$content .= '<span class="' . $site . '"></span>';
-					}
-					$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
+				if ( 'stackoverflow' === $site ) {
+					$content .= '<span class="fa fa-' . $site . ' fa-lg"></span>';
+				} else {
+					$content .= '<span class="' . $site . '"></span>';
+				}
+				$content .= '<a href="' . $link . '" target="_blank">' . $wordarray[count($wordarray)-1] . '</a>';
 			}
 			$key = md5( $date_key.strip_tags($content) );
 			save_activity( $user, $key, $content, $date );
@@ -201,7 +198,6 @@ function import_user_wordpress_activity( $user ){
 	if( $wordpress != '' ){
 		$html = file_get_html( $wordpress );
 		foreach( $html->find('ul[id=activity-list] li') as $activity){
-			$content = get_avatar( $user->ID, GRAVATAR_SIZE );
 			$content .= '<span class="fa fa-wordpress fa-lg"></span>';
 			$content .= $activity->first_child('p')->innertext;
 			$date = date( 'Y-m-d', strtotime( $activity->last_child('p')->innertext ) );
